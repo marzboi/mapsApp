@@ -6,6 +6,11 @@ interface MarkerAndColor {
   marker: Marker;
 }
 
+interface PlainMarker {
+  color: string;
+  lngLat: number[];
+}
+
 @Component({
   templateUrl: './marker-page.component.html',
   styleUrls: ['./marker-page.component.css'],
@@ -29,6 +34,8 @@ export class MarkerPageComponent {
       zoom: 10, // starting zoom
     });
 
+    this.readFromLocalStorage();
+
     // const marketHtml: HTMLElement = document.createElement('div');
     // marketHtml.innerHTML = 'Hello World';
 
@@ -40,17 +47,17 @@ export class MarkerPageComponent {
     //   .addTo(this.map);
   }
 
-  createMarket() {
+  createMarker() {
     if (!this.map) return;
 
     const color = '#xxxxxx'.replace(/x/g, (y) =>
       ((Math.random() * 16) | 0).toString(16)
     );
     const LngLat = this.map.getCenter();
-    this.addMarket(LngLat, color);
+    this.addMarker(LngLat, color);
   }
 
-  addMarket(lngLat: LngLat, color: string = 'red') {
+  addMarker(lngLat: LngLat, color: string = 'red') {
     if (!this.map) return;
 
     const marker = new Marker({
@@ -63,6 +70,11 @@ export class MarkerPageComponent {
     this.markers.push({
       color,
       marker,
+    });
+    this.saveToLocalStorage();
+
+    marker.on('dragend', () => {
+      this.saveToLocalStorage();
     });
   }
 
@@ -77,6 +89,31 @@ export class MarkerPageComponent {
     this.map.flyTo({
       zoom: 14,
       center: market.getLngLat(),
+    });
+  }
+
+  saveToLocalStorage() {
+    const plainMarkers: PlainMarker[] = this.markers.map(
+      ({ color, marker }) => {
+        return {
+          color,
+          lngLat: marker.getLngLat().toArray(),
+        };
+      }
+    );
+
+    localStorage.setItem('plainMarkers', JSON.stringify(plainMarkers));
+  }
+
+  readFromLocalStorage() {
+    const plainMarkersString = localStorage.getItem('plainMarkers') ?? '[]';
+    const plainMarkers: PlainMarker[] = JSON.parse(plainMarkersString);
+
+    plainMarkers.forEach(({ color, lngLat }) => {
+      const [lng, lat] = lngLat;
+      const coords = new LngLat(lng, lat);
+
+      this.addMarker(coords, color);
     });
   }
 }
